@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Writing</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        header {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        #inputContainer {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin-top: 20px;
+            width: 100%;
+        }
+        #inputField {
+            font-size: 24px;
+            margin-right: 10px;
+            flex-grow: 1;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        #outputField {
+            font-size: 24px;
+            border: 1px solid black;
+            padding: 10px;
+            width: 100%;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+        #sendButton {
+            font-size: 24px;
+            padding: 5px 10px;
+        }
+        .rule {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        @media (max-width: 600px) {
+            header {
+                font-size: 28px;
+                margin: 10px 0;
+            }
+            #inputField {
+                font-size: 20px;
+                padding: 5px;
+            }
+            #outputField {
+                font-size: 20px;
+                padding: 5px;
+            }
+            #sendButton {
+                font-size: 20px;
+                padding: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>3sec</header>
+    <div id="outputField"></div>
+    <div id="inputContainer">
+        <input type="text" id="inputField" placeholder="Type a letter" maxlength="4">
+        <button id="sendButton" disabled>Send</button>
+    </div>
+    <div class="rule">
+        Rule: Every 3 seconds, you can send up to 4 bytes of text.
+        <br>
+        Rule: 3초마다 최대 4바이트의 글자를 전송할 수 있습니다.
+    </div>
+    <script>
+        const inputField = document.getElementById('inputField');
+        const outputField = document.getElementById('outputField');
+        const sendButton = document.getElementById('sendButton');
+        let canSend = true;
+
+        const socket = new WebSocket('ws://localhost:8080');
+
+        socket.onopen = () => {
+            sendButton.disabled = false;
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            outputField.innerHTML += data.letter;
+        };
+
+        const sendLetter = () => {
+            if (canSend) {
+                const letter = inputField.value;
+                if (letter && getByteLength(letter) <= 4) {
+                    socket.send(JSON.stringify({ letter }));
+                    inputField.value = '';
+                    canSend = false;
+                    sendButton.disabled = true;
+                    setTimeout(() => {
+                        canSend = true;
+                        sendButton.disabled = false;
+                    }, 3000);
+                } else {
+                    alert("You can send up to 4 bytes of text at a time.");
+                }
+            }
+        };
+
+        sendButton.addEventListener('click', sendLetter);
+
+        inputField.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendLetter();
+            }
+        });
+
+        function getByteLength(str) {
+            return new Blob([str]).size;
+        }
+    </script>
+</body>
+</html>
